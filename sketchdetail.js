@@ -24,9 +24,26 @@ function getVolcanoFromURL() {
   return decodeURIComponent(params.get('volcano'));
 }
 
-// Parser CSV semplice
+// Parser CSV robusto - gestisce virgole dentro i valori
 function parseCSVLine(line, headers) {
-  const values = line.split(',').map(v => v.trim());
+  const values = [];
+  let current = '';
+  let insideQuotes = false;
+  
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    
+    if (char === '"') {
+      insideQuotes = !insideQuotes;
+    } else if (char === ',' && !insideQuotes) {
+      values.push(current.trim().replace(/^"|"$/g, ''));
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+  values.push(current.trim().replace(/^"|"$/g, ''));
+  
   const row = {};
   headers.forEach((h, i) => {
     row[h] = values[i] || '';
@@ -79,7 +96,12 @@ function loadVolcanoData() {
     return;
   }
   
-  fetch('assets/data.csv')
+  // Usa il percorso assoluto dalla root del progetto
+  const csvPath = window.location.pathname.includes('/pages/') || window.location.pathname.includes('.github') 
+    ? './assets/data.csv'
+    : './assets/data.csv';
+  
+  fetch(csvPath)
     .then(response => response.text())
     .then(csv => {
       const lines = csv.split('\n');
