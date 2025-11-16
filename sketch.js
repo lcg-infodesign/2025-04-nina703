@@ -2,7 +2,7 @@ let table;
 let volcanoes = [];
 let hoveredVolcano = null;
 
-// Config
+
 const GLYPH_SIZE = 15;
 const SIDEBAR_WIDTH = 320;
 const CARD_HEIGHT = 200;
@@ -10,7 +10,7 @@ const CARD_BG_COLOR = [250, 250, 252, 240];
 const HOVER_TOLERANCE = 1.2;
 const MARGIN = 15;
 
-// Mappa dei glifi per TypeCategory (non Type!)
+// Mappa dei glifi per TypeCategory
 const GLYPH_TYPES = {
   'Stratovolcano': 'circle',
   'Shield Volcano': 'triangle',
@@ -93,14 +93,14 @@ function prepareData() {
         location: row.getString("Location"),
         status: row.getString("Status"),
         lastEruption: row.getString("Last Known Eruption"),
-        type: type, // Type va qui
-        typeCategory: typeCategory, // TypeCategory per il glifo
+        type: type, 
+        typeCategory: typeCategory, 
         elevation: row.getString("Elevation (m)")
       },
       x: baseX,
       y: baseY,
       color: glyphColor,
-      typeCategory: typeCategory // Usa typeCategory per determinare il glifo
+      typeCategory: typeCategory 
     });
   }
 }
@@ -342,7 +342,7 @@ function drawVolcanoCard(v) {
   pop();
 }
 
-// Funzione helper per disegnare glifi (evita duplicazione di codice)
+
 function drawGlyph(type, size) {
   switch (type) {
     case 'circle':
