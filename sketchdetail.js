@@ -1,4 +1,4 @@
-// Configurazione glifi - Usa TypeCategory!
+// Configurazione glifi
 const GLYPH_TYPES = {
   'Stratovolcano': 'circle',
   'Shield Volcano': 'triangle',
@@ -13,45 +13,15 @@ const GLYPH_TYPES = {
 let maxElevation = 0;
 let minElevation = 0;
 
-// Funzione lerp semplice
 function lerp(a, b, t) {
   return a + (b - a) * t;
 }
 
-// Estrai il parametro dall'URL
 function getVolcanoFromURL() {
   const params = new URLSearchParams(window.location.search);
   return decodeURIComponent(params.get('volcano'));
 }
 
-// Parser CSV robusto - gestisce virgole dentro i valori
-function parseCSVLine(line, headers) {
-  const values = [];
-  let current = '';
-  let insideQuotes = false;
-  
-  for (let i = 0; i < line.length; i++) {
-    const char = line[i];
-    
-    if (char === '"') {
-      insideQuotes = !insideQuotes;
-    } else if (char === ',' && !insideQuotes) {
-      values.push(current.trim().replace(/^"|"$/g, ''));
-      current = '';
-    } else {
-      current += char;
-    }
-  }
-  values.push(current.trim().replace(/^"|"$/g, ''));
-  
-  const row = {};
-  headers.forEach((h, i) => {
-    row[h] = values[i] || '';
-  });
-  return row;
-}
-
-// Calcola il colore in base all'elevazione
 function getColorForElevation(elevation) {
   if (!elevation || isNaN(elevation) || maxElevation === minElevation) {
     return { r: 150, g: 100, b: 85 };
@@ -63,30 +33,40 @@ function getColorForElevation(elevation) {
   return { r, g, b };
 }
 
-// Popola i dati nella pagina
-function populateData(volData) {
-  document.getElementById('volcanoTitle').textContent = volData['Volcano Name'];
-  document.getElementById('volcanoNumber').textContent = volData['Volcano Number'];
-  document.getElementById('volcanoCountry').textContent = volData['Country'];
-  document.getElementById('volcanoLocation').textContent = volData['Location'];
+// Parser CSV migliorato
+function parseCSV(text) {
+  const lines = text.split('\n');
+  const headers = lines[0].split(',').map(h => h.trim());
+  const rows = [];
   
-  // Type è quello che vuoi mostrare nella scheda
-  const type = volData['Type'] || '';
-  document.getElementById('volcanoTypeDetail').textContent = type;
+  for (let i = 1; i < lines.length; i++) {
+    if (!lines[i].trim()) continue;
+    
+    const values = [];
+    let current = '';
+    let inQuotes = false;
+    
+    for (let char of lines[i]) {
+      if (char === '"') inQuotes = !inQuotes;
+      else if (char === ',' && !inQuotes) {
+        values.push(current.trim().replace(/^"|"$/g, ''));
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+    values.push(current.trim().replace(/^"|"$/g, ''));
+    
+    const row = {};
+    headers.forEach((h, idx) => {
+      row[h] = values[idx] || '';
+    });
+    rows.push(row);
+  }
   
-  // TypeCategory è quello che usi per il glifo - ORA LO MOSTRIAMO ALL'UTENTE!
-  const typeCategory = volData['TypeCategory'] || 'Other / Unknown';
-  document.getElementById('volcanoTypeCategory').textContent = typeCategory;
-  
-  document.getElementById('volcanoStatus').textContent = volData['Status'];
-  
-  const elevation = volData['Elevation (m)'];
-  document.getElementById('volcanoElevation').textContent = elevation ? elevation + ' m' : '-';
-  
-  document.getElementById('volcanoLastEruption').textContent = volData['Last Known Eruption'];
+  return { headers, rows };
 }
 
-// Carica e filtra i dati
 function loadVolcanoData() {
   const volcanoName = getVolcanoFromURL();
   
@@ -94,63 +74,55 @@ function loadVolcanoData() {
     document.getElementById('volcanoTitle').textContent = 'Errore: vulcano non specificato';
     return;
   }
-  
-  // Usa percorso relativo
-  const csvPath = './assets/data.csv';
-  
-  console.log("Caricando CSV da:", csvPath);
-  
-  fetch(csvPath)
+
+  fetch('./assets/data.csv')
     .then(response => {
-      if (!response.ok) {
-        throw new Error('Errore HTTP: ' + response.status);
-      }
+      if (!response.ok) throw new Error('Errore ' + response.status);
       return response.text();
     })
-    .then(csv => {
-      const lines = csv.split('\n');
-      const headers = lines[0].split(',').map(h => h.trim());
+    .then(csvText => {
+      const { headers, rows } = parseCSV(csvText);
       
-      // PRIMO PASSAGGIO: calcola min/max elevazione
-      let elevations = [];
-      for (let i = 1; i < lines.length; i++) {
-        if (!lines[i].trim()) continue;
-        const row = parseCSVLine(lines[i], headers);
-        const elev = parseFloat(row['Elevation (m)']);
-        if (!isNaN(elev) && elev > 0) {
-          elevations.push(elev);
-        }
-      }
+      // Calcola min/max elevazione
+      const elevations = rows
+        .map(r => parseFloat(r['Elevation (m)']))
+        .filter(e => !isNaN(e) && e > 0);
       
       if (elevations.length > 0) {
         maxElevation = Math.max(...elevations);
         minElevation = Math.min(...elevations);
       }
       
-      // SECONDO PASSAGGIO: trova il vulcano e carica i dati
-      for (let i = 1; i < lines.length; i++) {
-        if (!lines[i].trim()) continue;
-        const row = parseCSVLine(lines[i], headers);
-        
-        if (row['Volcano Name'] === volcanoName) {
-          populateData(row);
-          const elevation = parseFloat(row['Elevation (m)']);
-          // Usa TypeCategory per il glifo!
-          const typeCategory = row['TypeCategory'] || 'Other / Unknown';
-          drawGlyph(typeCategory, elevation);
-          return;
-        }
+      // Trova il vulcano
+      const volData = rows.find(r => r['Volcano Name'] === volcanoName);
+      
+      if (!volData) {
+        document.getElementById('volcanoTitle').textContent = 'Vulcano non trovato';
+        return;
       }
       
-      document.getElementById('volcanoTitle').textContent = 'Vulcano "' + volcanoName + '" non trovato';
+      // Popola i dati
+      document.getElementById('volcanoTitle').textContent = volData['Volcano Name'];
+      document.getElementById('volcanoNumber').textContent = volData['Volcano Number'] || '-';
+      document.getElementById('volcanoCountry').textContent = volData['Country'] || '-';
+      document.getElementById('volcanoLocation').textContent = volData['Location'] || '-';
+      document.getElementById('volcanoTypeCategory').textContent = volData['TypeCategory'] || '-';
+      document.getElementById('volcanoTypeDetail').textContent = volData['Type'] || '-';
+      document.getElementById('volcanoStatus').textContent = volData['Status'] || '-';
+      document.getElementById('volcanoElevation').textContent = volData['Elevation (m)'] ? volData['Elevation (m)'] + ' m' : '-';
+      document.getElementById('volcanoLastEruption').textContent = volData['Last Known Eruption'] || '-';
+      
+      // Disegna il glifo
+      const elevation = parseFloat(volData['Elevation (m)']);
+      const typeCategory = volData['TypeCategory'] || 'Other / Unknown';
+      drawGlyph(typeCategory, elevation);
     })
     .catch(err => {
-      console.error('Errore nel caricamento:', err);
-      document.getElementById('volcanoTitle').textContent = 'Errore nel caricamento dei dati: ' + err.message;
+      console.error('Errore:', err);
+      document.getElementById('volcanoTitle').textContent = 'Errore: ' + err.message;
     });
 }
 
-// Disegna il glifo con p5.js
 function drawGlyph(typeCategory, elevation) {
   const color = getColorForElevation(elevation);
   
@@ -160,7 +132,16 @@ function drawGlyph(typeCategory, elevation) {
       const size = Math.min(container.clientWidth - 20, 300);
       p.createCanvas(size, size);
       p.angleMode(p.DEGREES);
-      drawGlyphContent(p, typeCategory, color, size);
+      
+      p.background(249, 250, 251);
+      p.translate(size / 2, size / 2);
+      
+      p.fill(color.r, color.g, color.b);
+      p.stroke(0);
+      p.strokeWeight(2);
+      
+      const glyphType = GLYPH_TYPES[typeCategory] || 'circle';
+      drawGlyphShape(p, glyphType, 80);
     };
 
     p.draw = function() {
@@ -171,22 +152,6 @@ function drawGlyph(typeCategory, elevation) {
   new p5(sketch, 'glyphCanvas');
 }
 
-// Disegna il contenuto del glifo
-function drawGlyphContent(p, typeCategory, color, canvasSize) {
-  p.background(249, 250, 251);
-  p.translate(canvasSize / 2, canvasSize / 2);
-  
-  const glyphSize = 80;
-  p.fill(color.r, color.g, color.b);
-  p.stroke(0);
-  p.strokeWeight(2);
-  
-  // Usa la mappatura corretta di TypeCategory
-  const glyphType = GLYPH_TYPES[typeCategory] || 'circle';
-  drawGlyphShape(p, glyphType, glyphSize);
-}
-
-// Disegna la forma del glifo
 function drawGlyphShape(p, glyphType, size) {
   switch (glyphType) {
     case 'circle':
@@ -203,9 +168,7 @@ function drawGlyphShape(p, glyphType, size) {
       p.beginShape();
       for (let i = 0; i < 5; i++) {
         let angle = p.map(i, 0, 5, -90, 270);
-        let x = p.cos(angle) * size / 2;
-        let y = p.sin(angle) * size / 2;
-        p.vertex(x, y);
+        p.vertex(p.cos(angle) * size / 2, p.sin(angle) * size / 2);
       }
       p.endShape(p.CLOSE);
       break;
@@ -234,5 +197,5 @@ function drawGlyphShape(p, glyphType, size) {
   }
 }
 
-// Avvia al caricamento della pagina
+// Avvia quando la pagina carica
 window.addEventListener('load', loadVolcanoData);
