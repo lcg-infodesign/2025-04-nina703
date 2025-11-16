@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Volcano Detail</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f0f2f7 0%, #e1e6f2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 30px;
+            color: #2d374b;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 14px;
+            padding: 8px 16px;
+            border: 1px solid #d0d8e8;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+        }
+        .back-link:hover {
+            background: #f0f2f7;
+            border-color: #b0b8d0;
+        }
+        h1 {
+            color: #2d374b;
+            font-size: 36px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        .detail-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            margin-bottom: 40px;
+        }
+        .glyph-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 30px;
+            background: #f9fafb;
+            border-radius: 8px;
+            border: 1px solid #d0d8e8;
+        }
+        .glyph-canvas {
+            margin: 20px 0;
+        }
+        .glyph-info {
+            text-align: center;
+        }
+        .glyph-info p {
+            color: #646d80;
+            font-size: 14px;
+            margin: 5px 0;
+        }
+        .glyph-info strong {
+            color: #2d374b;
+            font-size: 16px;
+            display: block;
+            margin-top: 10px;
+        }
+        .details-section {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .detail-item {
+            padding: 15px;
+            background: #f9fafb;
+            border-left: 4px solid #e74c3c;
+            border-radius: 4px;
+        }
+        .detail-item label {
+            font-weight: 700;
+            color: #646d80;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .detail-item .value {
+            display: block;
+            color: #2d374b;
+            font-size: 16px;
+            margin-top: 5px;
+        }
+        .legend {
+            margin-top: 40px;
+            padding: 30px;
+            background: #f9fafb;
+            border-radius: 8px;
+            border: 1px solid #d0d8e8;
+        }
+        .legend h3 {
+            color: #2d374b;
+            margin-bottom: 20px;
+            font-size: 18px;
+        }
+        .legend-content {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            font-size: 13px;
+            color: #646d80;
+            line-height: 1.6;
+        }
+        .legend-item {
+            padding: 10px;
+            background: white;
+            border-radius: 4px;
+            border-left: 3px solid #5c4033;
+        }
+        .legend-item strong {
+            color: #2d374b;
+            display: block;
+            margin-bottom: 3px;
+        }
+        .error {
+            text-align: center;
+            color: #e74c3c;
+            font-size: 16px;
+            padding: 40px;
+        }
+        @media (max-width: 768px) {
+            .detail-grid {
+                grid-template-columns: 1fr;
+            }
+            .legend-content {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="back-link">← Torna alla mappa</a>
+        
+        <h1 id="volcanoTitle">Caricamento...</h1>
+        
+        <div class="detail-grid">
+            <div class="glyph-section">
+                <div class="glyph-canvas" id="glyphCanvas"></div>
+                <div class="glyph-info">
+                    <p></p>
+                    <strong id="volcanoType">-</strong>
+                    <p></p>
+                </div>
+            </div>
+            
+            <div class="details-section">
+                <div class="detail-item">
+                    <label>Numero</label>
+                    <div class="value" id="volcanoNumber">-</div>
+                </div>
+                <div class="detail-item">
+                    <label>Paese</label>
+                    <div class="value" id="volcanoCountry">-</div>
+                </div>
+                <div class="detail-item">
+                    <label>Località</label>
+                    <div class="value" id="volcanoLocation">-</div>
+                </div>
+                <div class="detail-item">
+                    <label>Categoria</label>
+                    <div class="value" id="volcanoTypeCategory">-</div>
+                </div>
+                <div class="detail-item">
+                    <label>Tipo</label>
+                    <div class="value" id="volcanoTypeDetail">-</div>
+                </div>
+                <div class="detail-item">
+                    <label>Stato</label>
+                    <div class="value" id="volcanoStatus">-</div>
+                </div>
+                <div class="detail-item">
+                    <label>Elevazione</label>
+                    <div class="value" id="volcanoElevation">-</div>
+                </div>
+                <div class="detail-item">
+                    <label>Ultima Eruzione</label>
+                    <div class="value" id="volcanoLastEruption">-</div>
+                </div>
+            </div>
+        </div>
+        
+        <!--<div class="legend">
+            <h3>Legenda Codifica Glifo</h3>
+            <div class="legend-content">
+                <div class="legend-item">
+                    <strong>Forma del Glifo</strong>
+                    Rappresenta il tipo di vulcano (Stratovolcano, Shield, ecc.)
+                </div>
+                <div class="legend-item">
+                    <strong>Colore del Glifo</strong>
+                    Rappresenta l'elevazione (marrone scuro = bassa, corallo = alta)
+                </div>
+                <div class="legend-item">
+                    <strong>Parametri Codificati</strong>
+                    1) Tipo vulcano (forma)<br>
+                    2) Elevazione (colore)
+                </div>
+                <div class="legend-item">
+                    <strong>Processo di Decodifica</strong>
+                    Osserva forma → tipo | Osserva colore → elevazione
+                </div>
+            </div>
+        </div> !-->
+    </div>
+
+    <script src="sketchDetail.js"></script>
+</body>
+</html>
