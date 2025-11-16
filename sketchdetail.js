@@ -1,3 +1,4 @@
+// Configurazione glifi - Usa TypeCategory!
 const GLYPH_TYPES = {
   'Stratovolcano': 'circle',
   'Shield Volcano': 'triangle',
@@ -12,6 +13,7 @@ const GLYPH_TYPES = {
 let maxElevation = 0;
 let minElevation = 0;
 
+// Funzione lerp semplice
 function lerp(a, b, t) {
   return a + (b - a) * t;
 }
@@ -22,6 +24,7 @@ function getVolcanoFromURL() {
   return decodeURIComponent(params.get('volcano'));
 }
 
+// Parser CSV robusto - gestisce virgole dentro i valori
 function parseCSVLine(line, headers) {
   const values = [];
   let current = '';
@@ -60,19 +63,18 @@ function getColorForElevation(elevation) {
   return { r, g, b };
 }
 
-
+// Popola i dati nella pagina
 function populateData(volData) {
   document.getElementById('volcanoTitle').textContent = volData['Volcano Name'];
   document.getElementById('volcanoNumber').textContent = volData['Volcano Number'];
   document.getElementById('volcanoCountry').textContent = volData['Country'];
   document.getElementById('volcanoLocation').textContent = volData['Location'];
   
-
+  // Type è quello che vuoi mostrare nella scheda
   const type = volData['Type'] || '';
-  document.getElementById('volcanoType').textContent = type;
   document.getElementById('volcanoTypeDetail').textContent = type;
   
- 
+  // TypeCategory è quello che usi per il glifo - ORA LO MOSTRIAMO ALL'UTENTE!
   const typeCategory = volData['TypeCategory'] || 'Other / Unknown';
   document.getElementById('volcanoTypeCategory').textContent = typeCategory;
   
@@ -93,19 +95,23 @@ function loadVolcanoData() {
     return;
   }
   
- 
-  const baseUrl = window.location.href.split('detail.html')[0];
-  const csvPath = baseUrl + 'assets/data.csv';
+  // Usa percorso relativo
+  const csvPath = './assets/data.csv';
   
   console.log("Caricando CSV da:", csvPath);
   
   fetch(csvPath)
-    .then(response => response.text())
+    .then(response => {
+      if (!response.ok) {
+        throw new Error('Errore HTTP: ' + response.status);
+      }
+      return response.text();
+    })
     .then(csv => {
       const lines = csv.split('\n');
       const headers = lines[0].split(',').map(h => h.trim());
       
-      //calcola min/max elevazione
+      // PRIMO PASSAGGIO: calcola min/max elevazione
       let elevations = [];
       for (let i = 1; i < lines.length; i++) {
         if (!lines[i].trim()) continue;
@@ -121,7 +127,7 @@ function loadVolcanoData() {
         minElevation = Math.min(...elevations);
       }
       
-      //trova il vulcano e carica i dati
+      // SECONDO PASSAGGIO: trova il vulcano e carica i dati
       for (let i = 1; i < lines.length; i++) {
         if (!lines[i].trim()) continue;
         const row = parseCSVLine(lines[i], headers);
@@ -139,8 +145,8 @@ function loadVolcanoData() {
       document.getElementById('volcanoTitle').textContent = 'Vulcano "' + volcanoName + '" non trovato';
     })
     .catch(err => {
-      console.error('Errore:', err);
-      document.getElementById('volcanoTitle').textContent = 'Errore nel caricamento dei dati';
+      console.error('Errore nel caricamento:', err);
+      document.getElementById('volcanoTitle').textContent = 'Errore nel caricamento dei dati: ' + err.message;
     });
 }
 
